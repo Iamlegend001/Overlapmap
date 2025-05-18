@@ -37,15 +37,17 @@ export default function ForceGraph({ data = [] }) {
     // We need to ensure the nodes array is set before the links are resolved.
     simulation.nodes(data);
 
-    // Map link source/target IDs to node objects after setting simulation.nodes()
-    const linksData = data
+    // Resolve link source and target IDs to node objects from the simulation's nodes
+    // Filter out links where either source or target node is not found in the current data
+    const resolvedLinksData = data
       .flatMap((d) => d.connections || [])
       .map((link) => ({
-        source: data.find((node) => node.id === link.source) || link.source, // Find the node object, fallback to ID if not found (shouldn't happen with correct data)
-        target: data.find((node) => node.id === link.target) || link.target,
-      }));
+        source: simulation.nodes().find((node) => node.id === link.source),
+        target: simulation.nodes().find((node) => node.id === link.target),
+      }))
+      .filter((link) => link.source && link.target); // Ensure both source and target nodes exist in the current data
 
-    simulation.force("link").links(linksData);
+    simulation.force("link").links(resolvedLinksData);
 
     // Bind data to SVG elements
     const svg = d3.select(svgRef.current);
@@ -60,7 +62,7 @@ export default function ForceGraph({ data = [] }) {
       .append("g")
       .attr("class", "links")
       .selectAll("line")
-      .data(linksData)
+      .data(resolvedLinksData)
       .enter()
       .append("line")
       .attr("stroke", "#4a5568")
@@ -139,7 +141,7 @@ export default function ForceGraph({ data = [] }) {
           .duration(200)
           .attr("opacity", (n) =>
             n.id === d.id ||
-            linksData.some(
+            resolvedLinksData.some(
               (l) =>
                 (l.source.id === d.id && l.target.id === n.id) ||
                 (l.target.id === d.id && l.source.id === n.id)

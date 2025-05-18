@@ -96,12 +96,20 @@ export default function Explorer() {
     },
   ];
 
-  // Filter data based on search query
-  const filteredData = useMemo(() => {
-    if (!searchQuery.trim()) return graphData;
+  // Filter data based on search query and generate corresponding links
+  const filteredGraphData = useMemo(() => {
+    const nodes = graphData;
+    const links = graphData.flatMap((d) => d.connections || []);
+
+    if (!searchQuery.trim()) {
+      // If no search query, return all nodes and links
+      return { nodes, links };
+    }
 
     const query = searchQuery.toLowerCase().trim();
-    const matchingNodes = graphData.filter((node) => {
+
+    // Find nodes that match the search query (by title or type)
+    const matchingNodes = nodes.filter((node) => {
       if (!node || !node.title || !node.type) return false;
       return (
         node.title.toLowerCase().includes(query) ||
@@ -109,24 +117,43 @@ export default function Explorer() {
       );
     });
 
-    // Get all connected nodes
+    // Identify all nodes connected to the matching nodes
     const connectedNodeIds = new Set();
     matchingNodes.forEach((node) => {
       if (!node || !node.id) return;
       connectedNodeIds.add(node.id);
-      if (node.connections && Array.isArray(node.connections)) {
-        node.connections.forEach((conn) => {
-          if (conn && conn.target) {
-            connectedNodeIds.add(conn.target);
-          }
-        });
+    });
+
+    // Add connected node IDs to the set if they are involved in a link with a matching node
+    links.forEach((link) => {
+      if (link && link.source && link.target) {
+        if (
+          connectedNodeIds.has(link.source) ||
+          connectedNodeIds.has(link.target)
+        ) {
+          connectedNodeIds.add(link.source);
+          connectedNodeIds.add(link.target);
+        }
       }
     });
 
-    return graphData.filter((node) => {
-      if (!node || !node.id) return false;
-      return connectedNodeIds.has(node.id);
+    // Filter nodes to include only matching nodes and their directly connected neighbors
+    const filteredNodes = nodes.filter((node) => connectedNodeIds.has(node.id));
+
+    // Create a map of filtered nodes by ID for efficient lookup
+    const filteredNodesMap = new Map(
+      filteredNodes.map((node) => [node.id, node])
+    );
+
+    // Filter links to include only those where both source and target nodes are in the filteredNodes list
+    const filteredLinks = links.filter((link) => {
+      if (!link || !link.source || !link.target) return false;
+      return (
+        filteredNodesMap.has(link.source) && filteredNodesMap.has(link.target)
+      );
     });
+
+    return { nodes: filteredNodes, links: filteredLinks };
   }, [searchQuery, graphData]);
 
   const recommendations = [
@@ -177,7 +204,7 @@ export default function Explorer() {
             </div>
             {searchQuery && (
               <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-                {filteredData.length} results
+                {filteredGraphData.nodes.length} results
               </div>
             )}
           </div>
@@ -212,7 +239,7 @@ export default function Explorer() {
             className="w-full h-[600px] bg-gray-800/30 rounded-xl border border-gray-700 relative overflow-hidden group"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <ForceGraph data={filteredData} />
+            <ForceGraph data={filteredGraphData} />
           </motion.div>
         )}
 
