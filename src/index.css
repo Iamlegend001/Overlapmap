@@ -1,0 +1,52 @@
+@layer base {
+  :root {
+    --color-primary: 79 70 229;
+    --color-secondary: 236 72 153;
+  }
+
+  body {
+    @apply bg-black text-white antialiased;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+  }
+
+  .glass-card {
+    @apply bg-black/40 backdrop-blur-lg rounded-2xl border border-gray-800 shadow-xl;
+  }
+
+  .hover-gradient {
+    @apply hover:bg-gradient-to-r hover:from-primary/20 hover:to-secondary/20 transition-all duration-300;
+  }
+}
+
+/* Custom animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-700 rounded-full hover:bg-gray-600 transition-colors duration-200;
+}
